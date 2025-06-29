@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tonks</title>
+    <style>
+        html {
+            background-color: #6f4d44;
+            /* background-image: url(https://placewaifu.com/image/1920/1080);
+            background-repeat: no-repeat; */
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #game-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 32px;
+            margin-bottom: 24px;
+        }
+        #game-container canvas {
+            display: block;
+            image-rendering: pixelated;
+            height: calc(100vh * 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <script src="scripts/phaser.js"></script>
+    <script>
+        window.PHASER_PARENT = 'game-container';
+    </script>
+    <script src="scripts/tonks.js"></script>
+</body>
+</html>
