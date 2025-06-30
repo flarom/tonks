@@ -1,3 +1,11 @@
+function displayGameOver(){
+    alert("you died");
+    if (currentScene && currentScene.scene) {
+        currentScene.scene.pause();
+        currentScene.input.enabled = false;
+    }
+}
+
 const spriteSize = 16;
 const defaultWidth = 16;
 const defaultHeight = defaultWidth;
@@ -7,7 +15,133 @@ const movementSpeedFast = 80;
 const movementSpeedSlow = 30;
 const movementSpeedStationary = 0;
 
-const movementSpeedPlayer = movementSpeedNormal;
+const bulletSpeedNormal = 100;
+const bulletSpeedFast = 150;
+
+const fireRateCooldownSlow = 1.0;
+const fireRateCooldownFast = 0.5;
+const fireRateCooldownControlled = 0;
+
+const behaviourControlled = 0; // responds to keyboard and mouse input, instead of randomly moving
+const behaviourPassive = 1;
+const behaviourDefensive = 2;
+const behaviourIncautious = 3;
+const behaviourOffensive = 4;
+const behaviourActive = 5;
+const behaviourDynamic = 6;
+
+const tankTypes = [
+    {
+        id:               4,
+        name:             "player",
+        movement:         movementSpeedNormal,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownControlled,
+        ricochets:        1,
+        maxBullets:       5,
+        maxMines:         2,
+        behaviour:        behaviourControlled
+    },
+    {
+        id:               5,
+        name:             "brown",
+        movement:         movementSpeedStationary,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownSlow,
+        ricochets:        1,
+        maxBullets:       1,
+        maxMines:         0,
+        behaviour:        behaviourPassive
+    },
+    {
+        id:               5.1,
+        name:             "ash",
+        movement:         movementSpeedSlow,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownSlow,
+        ricochets:        1,
+        maxBullets:       1,
+        maxMines:         0,
+        behaviour:        behaviourDefensive
+    },
+    {
+        id:               5.2,
+        name:             "marine",
+        movement:         movementSpeedSlow,
+        bulletSpeed:      bulletSpeedFast,
+        fireRateCooldown: fireRateCooldownSlow,
+        ricochets:        0,
+        maxBullets:       1,
+        maxMines:         0,
+        behaviour:        behaviourDefensive
+    },
+    {
+        id:               5.3,
+        name:             "yellow",
+        movement:         movementSpeedNormal,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownSlow,
+        ricochets:        1,
+        maxBullets:       1,
+        maxMines:         4,
+        behaviour:        behaviourIncautious
+    },
+    {
+        id:               5.4,
+        name:             "pink",
+        movement:         movementSpeedSlow,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownFast,
+        ricochets:        1,
+        maxBullets:       3,
+        maxMines:         0,
+        behaviour:        behaviourOffensive
+    },
+    {
+        id:               5.5,
+        name:             "green",
+        movement:         movementSpeedStationary,
+        bulletSpeed:      bulletSpeedFast,
+        fireRateCooldown: fireRateCooldownFast,
+        ricochets:        2,
+        maxBullets:       2,
+        maxMines:         0,
+        behaviour:        behaviourActive
+    },
+    {
+        id:               5.6,
+        name:             "violet",
+        movement:         movementSpeedNormal,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownFast,
+        ricochets:        1,
+        maxBullets:       5,
+        maxMines:         2,
+        behaviour:        behaviourOffensive
+    },
+    {
+        id:               5.7,
+        name:             "white",
+        movement:         movementSpeedSlow,
+        bulletSpeed:      bulletSpeedNormal,
+        fireRateCooldown: fireRateCooldownFast,
+        ricochets:        1,
+        maxBullets:       5,
+        maxMines:         2,
+        behaviour:        behaviourOffensive
+    },
+    {
+        id:               5.8,
+        name:             "black",
+        movement:         movementSpeedFast,
+        bulletSpeed:      bulletSpeedFast,
+        fireRateCooldown: fireRateCooldownFast,
+        ricochets:        0,
+        maxBullets:       3,
+        maxMines:         2,
+        behaviour:        behaviourDynamic
+    },
+];
 
 let map = {
     "title": "blank",
@@ -44,7 +178,10 @@ const tileTypes = [
         spritesheet: "resources/sprites/grass.png",
         frameWidth: 16,
         frameHeight: 16,
-        connects: { n: true, e: true, s: true, w: true, ne: true, nw: true, se: true, sw: true }
+        tiles: true,
+        connects: { n: true, e: true, s: true, w: true, ne: true, nw: true, se: true, sw: true },
+        tankCollidable: false,
+        bulletCollidable: false
     },
     {
         id: 1,
@@ -52,7 +189,10 @@ const tileTypes = [
         spritesheet: "resources/sprites/wall.png",
         frameWidth: 16,
         frameHeight: 16,
-        connects: { n: false, e: false, s: false, w: false, ne: false, nw: false, se: false, sw: false }
+        tiles: true,
+        connects: { n: false, e: false, s: false, w: false, ne: false, nw: false, se: false, sw: false },
+        tankCollidable: true,
+        bulletCollidable: true
     },
     {
         id: 2,
@@ -60,7 +200,21 @@ const tileTypes = [
         spritesheet: "resources/sprites/breakable_wall.png",
         frameWidth: 16,
         frameHeight: 16,
-        connects: { n: false, e: false, s: false, w: false, ne: false, nw: false, se: false, sw: false }
+        tiles: false,
+        connects: { n: false, e: false, s: false, w: false, ne: false, nw: false, se: false, sw: false },
+        tankCollidable: true,
+        bulletCollidable: true
+    },
+    {
+        id: 2.1,
+        name: "broken_breakable_wall",
+        spritesheet: "resources/sprites/broken_breakable_wall.png",
+        frameWidth: 16,
+        frameHeight: 16,
+        tiles: false,
+        connects: { n: false, e: false, s: false, w: false, ne: false, nw: false, se: false, sw: false },
+        tankCollidable: false,
+        bulletCollidable: false
     },
     {
         id: 3,
@@ -68,15 +222,21 @@ const tileTypes = [
         spritesheet: "resources/sprites/water.png",
         frameWidth: 16,
         frameHeight: 16,
-        connects: { n: true, e: true, s: true, w: true, ne: false, nw: false, se: false, sw: false }
+        tiles: true,
+        connects: { n: true, e: true, s: true, w: true, ne: false, nw: false, se: false, sw: false },
+        tankCollidable: true,
+        bulletCollidable: false
     },
     {
-    id: 4,
+        id: 4,
         name: "tank_spawn",
-        spritesheet: "resources/sprites/grass.png",
+        spritesheet: "resources/sprites/spawn.png",
         frameWidth: 16,
         frameHeight: 16,
-        connects: { n: true, e: true, s: true, w: true, ne: true, nw: true, se: true, sw: true }
+        tiles: false,
+        connects: { n: true, e: true, s: true, w: true, ne: true, nw: true, se: true, sw: true },
+        tankCollidable: false,
+        bulletCollidable: false
     }
 ];
 
@@ -89,7 +249,7 @@ function preloadMapSprites(scene) {
         );
     });
 
-    scene.load.image("tank", "resources/sprites/tank.png");
+    scene.load.image("tank", "resources/sprites/tank1.png");
     scene.load.image("turret", "resources/sprites/turret.png");
 }
 
@@ -154,7 +314,30 @@ let currentScene = null;
 
 function refreshMap() {
     if (currentScene) {
-        drawMap(currentScene, map);
+        const x = playerTank?.x;
+        const y = playerTank?.y;
+        const angle = playerTank?.angle;
+        const turretAngle = playerTurret?.rotation;
+
+        drawMap(currentScene, map, null);
+
+        if (x !== undefined && y !== undefined) {
+            playerTank = currentScene.physics.add.sprite(x, y, "tank");
+            currentScene.textures.get('tank').setFilter(Phaser.Textures.NEAREST);
+            playerTank.setCollideWorldBounds(true);
+            playerTank.setDepth(1);
+            playerTank.angle = angle || 0;
+            playerTank.body.setSize(14, 14, true);
+
+            playerTurret = currentScene.add.sprite(x, y, "turret");
+            playerTurret.setDisplaySize(15, 15);
+            playerTurret.setOrigin(0.5, 0.5);
+            playerTurret.setDepth(2);
+            currentScene.textures.get('turret').setFilter(Phaser.Textures.NEAREST);
+            playerTurret.rotation = turretAngle || 0;
+
+            setupTankCollisions(currentScene, map);
+        }
     }
 }
 
@@ -164,11 +347,13 @@ function drawMap(scene, mapData, tankIndex = null) {
     scene.children.removeAll();
     for (let i = 0; i < mapData.map.length; i++) {
         const tileId = mapData.map[i];
-        const tileType = tileTypes.find(t => t.id === tileId || (tileId === 4 && t.id === 0));
+        const tileType = tileTypes.find(t => t.id === tileId);
         if (!tileType) continue;
         const x = (i % cols) * spriteSize;
         const y = Math.floor(i / cols) * spriteSize;
-        const frame = getTileFrame(mapData.map, cols, i, tileTypes);
+        const frame = tileType.tiles
+            ? getTileFrame(mapData.map, cols, i, tileTypes)
+            : 0;
         scene.add.sprite(x + spriteSize / 2, y + spriteSize / 2, tileType.name, frame);
     }
     if (tankIndex !== null) {
@@ -186,6 +371,8 @@ function drawMap(scene, mapData, tankIndex = null) {
         playerTurret.setOrigin(0.5, 0.5);
         playerTurret.setDepth(2);
         scene.textures.get('turret').setFilter(Phaser.Textures.NEAREST);
+
+        playerTankType = getTankTypeById(4);
     }
 }
 
@@ -199,37 +386,57 @@ function findTankSpawn(mapData) {
     }
     if (spawnIndexes.length > 0) {
         const idx = spawnIndexes[Math.floor(Math.random() * spawnIndexes.length)];
-        mapData.map = mapData.map.map((v, i) => (v === 4 ? 0 : v));
-        mapData.map[idx] = 0;
         return idx;
     }
     const firstZero = mapData.map.indexOf(0);
     if (firstZero !== -1) {
-        mapData.map[firstZero] = 0;
         return firstZero;
     }
-    mapData.map[0] = 0;
     return 0;
 }
 
 let playerTank = null;
 let playerTurret = null;
 let tankSpawnIndex = null;
+let playerTankType = null;
+let playerBullets = [];
+let lastFireTime = 0;
+
+function getTankTypeById(id) {
+    return tankTypes.find(t => t.id === id);
+}
+
+function canFire() {
+    if (!playerTankType) return false;
+    if (playerBullets.length >= playerTankType.maxBullets) return false;
+    if (playerTankType.fireRateCooldown === 0) return true;
+    const now = performance.now() / 1000;
+    return (now - lastFireTime) >= playerTankType.fireRateCooldown;
+}
 
 function setupTankCollisions(scene, mapData) {
     const cols = mapData.width || defaultWidth;
-    const collisionGroup = scene.physics.add.staticGroup();
+    const tankCollisionGroup = scene.physics.add.staticGroup();
+    const bulletCollisionGroup = scene.physics.add.staticGroup();
     for (let i = 0; i < mapData.map.length; i++) {
         const tileId = mapData.map[i];
-        if (tileId !== 0) {
-            const x = (i % cols) * spriteSize + spriteSize / 2;
-            const y = Math.floor(i / cols) * spriteSize + spriteSize / 2;
+        const tileType = tileTypes.find(t => t.id === tileId);
+        const x = (i % cols) * spriteSize + spriteSize / 2;
+        const y = Math.floor(i / cols) * spriteSize + spriteSize / 2;
+        if (tileType && tileType.tankCollidable) {
             const block = scene.add.rectangle(x, y, spriteSize, spriteSize);
             scene.physics.add.existing(block, true);
-            collisionGroup.add(block);
+            tankCollisionGroup.add(block);
+        }
+        if (tileType && tileType.bulletCollidable) {
+            const block = scene.add.rectangle(x, y, spriteSize, spriteSize);
+            scene.physics.add.existing(block, true);
+            bulletCollisionGroup.add(block);
         }
     }
-    scene.physics.add.collider(playerTank, collisionGroup);
+    scene.physics.add.collider(playerTank, tankCollisionGroup);
+    scene.collisionGroup = tankCollisionGroup;
+    scene.bulletCollisionGroup = bulletCollisionGroup;
 }
 
 let keysPressed = {};
@@ -237,8 +444,8 @@ let keysPressed = {};
 function setupTankControls(scene) {
     scene.input.keyboard.on('keydown', function (event) {
         keysPressed[event.key] = true;
-        if (!playerTank) return;
-        const speed = movementSpeedPlayer;
+        if (!playerTank || !playerTankType) return;
+        const speed = playerTankType.movement;
         if (event.key === 'w' || event.key === 'ArrowUp') {
             scene.physics.velocityFromRotation(playerTank.rotation, speed, playerTank.body.velocity);
         } else if (event.key === 's' || event.key === 'ArrowDown') {
@@ -255,6 +462,151 @@ function setupTankControls(scene) {
             playerTank.body.setVelocity(0, 0);
         }
     });
+}
+
+function fireBullet(scene) {
+    if (!canFire()) return;
+    lastFireTime = performance.now() / 1000;
+
+    const angle = playerTurret.rotation;
+    const speed = playerTankType.bulletSpeed;
+    const ricochets = playerTankType.ricochets;
+
+    const offset = 18;
+    const startX = playerTank.x + Math.cos(angle) * offset;
+    const startY = playerTank.y + Math.sin(angle) * offset;
+
+    const bullet = scene.add.rectangle(startX, startY, 2, 2, 0xffffff).setDepth(3);
+    scene.physics.add.existing(bullet);
+    bullet.body.setAllowGravity(false);
+    bullet.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    bullet.body.setCollideWorldBounds(true);
+    bullet.body.onWorldBounds = true;
+    bullet.ricochetsLeft = ricochets;
+    bullet.trail = [];
+    bullet.trailLength = Math.max(8, speed / 2);
+
+    bullet.destroyTimer = scene.time.delayedCall(5000, () => {
+        destroyBullet(bullet);
+    });
+
+    playerBullets.push(bullet);
+
+    scene.physics.add.collider(bullet, scene.bulletCollisionGroup, function(b, block) {
+        const bx = Math.floor(block.x / spriteSize);
+        const by = Math.floor(block.y / spriteSize);
+        const cols = map.width || defaultWidth;
+        const tileIdx = by * cols + bx;
+        const tileId = map.map[tileIdx];
+        const tileType = tileTypes.find(t => t.id === tileId);
+
+        if (tileType && tileType.id === 2) {
+            map.map[tileIdx] = 2.1;
+            refreshMap();
+            destroyBullet(bullet);
+
+            const px = block.x;
+            const py = block.y;
+            const particles = scene.add.particles(0x000000, {
+                x: px,
+                y: py,
+                speed: { min: 30, max: 80 },
+                angle: { min: 0, max: 360 },
+                lifespan: 350,
+                quantity: 12,
+                scale: { start: 0.5, end: 0 },
+                alpha: { start: 1, end: 0 },
+                gravityY: 0
+            });
+            scene.time.delayedCall(400, () => {
+                particles.destroy();
+            });
+        } else if (tileType && tileType.bulletCollidable) {
+            if (bullet.ricochetsLeft > 0) {
+                bullet.ricochetsLeft--;
+                let normal = {x: 0, y: 0};
+                if (bullet.body.blocked.left)   normal.x = 1;
+                if (bullet.body.blocked.right)  normal.x = -1;
+                if (bullet.body.blocked.up)     normal.y = 1;
+                if (bullet.body.blocked.down)   normal.y = -1;
+
+                let v = {x: bullet.body.velocity.x, y: bullet.body.velocity.y};
+                let dot = v.x * normal.x + v.y * normal.y;
+                bullet.body.setVelocity(
+                    v.x - 2 * dot * normal.x,
+                    v.y - 2 * dot * normal.y
+                );
+            } else {
+                destroyBullet(bullet);
+            }
+        }
+    });
+
+    scene.physics.world.on('worldbounds', function(body) {
+        if (body.gameObject !== bullet) return;
+        if (bullet.ricochetsLeft > 0) {
+            bullet.ricochetsLeft--;
+            let normal = {x: 0, y: 0};
+            if (bullet.body.blocked.left)   normal.x = 1;
+            if (bullet.body.blocked.right)  normal.x = -1;
+            if (bullet.body.blocked.up)     normal.y = 1;
+            if (bullet.body.blocked.down)   normal.y = -1;
+            let v = {x: bullet.body.velocity.x, y: bullet.body.velocity.y};
+            let dot = v.x * normal.x + v.y * normal.y;
+            bullet.body.setVelocity(
+                v.x - 2 * dot * normal.x,
+                v.y - 2 * dot * normal.y
+            );
+        } else {
+            destroyBullet(bullet);
+        }
+    });
+
+    scene.physics.add.overlap(bullet, playerTank, function(b, tank) {
+        destroyBullet(bullet);
+        tank.destroy();
+        if (playerTurret) playerTurret.destroy();
+        displayGameOver();
+    });
+}
+
+function destroyBullet(bullet) {
+    if (bullet.destroyTimer) {
+        bullet.destroyTimer.remove(false);
+    }
+    bullet.destroy();
+    playerBullets = playerBullets.filter(b => b !== bullet);
+}
+
+function updateBullets(scene) {
+    for (const bullet of playerBullets) {
+        bullet.trail.push({x: bullet.x, y: bullet.y});
+        if (bullet.trail.length > bullet.trailLength) bullet.trail.shift();
+
+        if (
+            bullet.x < 0 || bullet.x > scene.sys.game.config.width ||
+            bullet.y < 0 || bullet.y > scene.sys.game.config.height
+        ) {
+            destroyBullet(bullet);
+        }
+    }
+}
+
+function renderBulletTrails(scene) {
+    for (const bullet of playerBullets) {
+        for (let i = 1; i < bullet.trail.length; i++) {
+            const a = bullet.trail[i-1];
+            const b = bullet.trail[i];
+            const alpha = i / bullet.trail.length;
+            const graphics = scene.add.graphics();
+            graphics.lineStyle(2, 0xffffff, 0.2 * alpha);
+            graphics.beginPath();
+            graphics.moveTo(a.x, a.y);
+            graphics.lineTo(b.x, b.y);
+            graphics.strokePath();
+            graphics.destroy();
+        }
+    }
 }
 //#endregion
 
@@ -276,9 +628,18 @@ const config = {
             drawMap(this, map, tankSpawnIndex);
             setupTankCollisions(this, map);
             setupTankControls(this);
+
+            this.input.on('pointerdown', () => {
+                if (playerTankType && playerTankType.fireRateCooldown === 0) {
+                    fireBullet(this);
+                }
+            });
+            this.input.on('pointerup', () => {
+                
+            });
         },
         update: function () {
-            if (!playerTank) return;
+            if (!playerTank || !playerTankType) return;
 
             if (keysPressed['a'] || keysPressed['ArrowLeft']) {
                 playerTank.angle -= ROTATE_SPEED;
@@ -287,10 +648,11 @@ const config = {
                 playerTank.angle += ROTATE_SPEED;
             }
 
+            const speed = playerTankType.movement;
             if (keysPressed['w'] || keysPressed['ArrowUp']) {
-                this.physics.velocityFromRotation(playerTank.rotation, movementSpeedPlayer, playerTank.body.velocity);
+                this.physics.velocityFromRotation(playerTank.rotation, speed, playerTank.body.velocity);
             } else if (keysPressed['s'] || keysPressed['ArrowDown']) {
-                this.physics.velocityFromRotation(playerTank.rotation, -movementSpeedPlayer, playerTank.body.velocity);
+                this.physics.velocityFromRotation(playerTank.rotation, -speed, playerTank.body.velocity);
             } else {
                 playerTank.body.setVelocity(0, 0);
             }
@@ -304,6 +666,15 @@ const config = {
                 const dy = pointer.worldY - playerTank.y;
                 playerTurret.rotation = Math.atan2(dy, dx);
             }
+
+            if (playerTankType && playerTankType.fireRateCooldown > 0 && this.input.activePointer.isDown) {
+                fireBullet(this);
+            }
+
+            updateBullets(this);
+        },
+        render: function () {
+            renderBulletTrails(this);
         }
     }
 };
