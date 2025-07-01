@@ -1,9 +1,6 @@
 function displayGameOver(){
     alert("you died");
-    if (currentScene && currentScene.scene) {
-        currentScene.scene.pause();
-        currentScene.input.enabled = false;
-    }
+    location.reload();
 }
 
 const spriteSize = 16;
@@ -153,13 +150,13 @@ let map = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 1, 3, 3, 1,
-        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0,
-        0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0,
+        0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-        0, 0, 4, 0, 0, 1, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
-        0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
+        0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
         1, 3, 3, 1, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -524,18 +521,22 @@ function fireBullet(scene) {
         } else if (tileType && tileType.bulletCollidable) {
             if (bullet.ricochetsLeft > 0) {
                 bullet.ricochetsLeft--;
-                let normal = {x: 0, y: 0};
-                if (bullet.body.blocked.left)   normal.x = 1;
-                if (bullet.body.blocked.right)  normal.x = -1;
-                if (bullet.body.blocked.up)     normal.y = 1;
-                if (bullet.body.blocked.down)   normal.y = -1;
 
-                let v = {x: bullet.body.velocity.x, y: bullet.body.velocity.y};
-                let dot = v.x * normal.x + v.y * normal.y;
-                bullet.body.setVelocity(
-                    v.x - 2 * dot * normal.x,
-                    v.y - 2 * dot * normal.y
-                );
+                const vx = bullet.body.velocity.x;
+                const vy = bullet.body.velocity.y;
+
+                const dx = bullet.x - block.x;
+                const dy = bullet.y - block.y;
+
+                const length = Math.sqrt(dx * dx + dy * dy) || 1;
+                const nx = dx / length;
+                const ny = dy / length;
+
+                const dot = vx * nx + vy * ny;
+                const rvx = vx - 2 * dot * nx;
+                const rvy = vy - 2 * dot * ny;
+
+                bullet.body.setVelocity(rvx, rvy);
             } else {
                 destroyBullet(bullet);
             }
@@ -546,17 +547,21 @@ function fireBullet(scene) {
         if (body.gameObject !== bullet) return;
         if (bullet.ricochetsLeft > 0) {
             bullet.ricochetsLeft--;
-            let normal = {x: 0, y: 0};
-            if (bullet.body.blocked.left)   normal.x = 1;
-            if (bullet.body.blocked.right)  normal.x = -1;
-            if (bullet.body.blocked.up)     normal.y = 1;
-            if (bullet.body.blocked.down)   normal.y = -1;
-            let v = {x: bullet.body.velocity.x, y: bullet.body.velocity.y};
-            let dot = v.x * normal.x + v.y * normal.y;
-            bullet.body.setVelocity(
-                v.x - 2 * dot * normal.x,
-                v.y - 2 * dot * normal.y
-            );
+
+            const vx = bullet.body.velocity.x;
+            const vy = bullet.body.velocity.y;
+
+            let nx = 0, ny = 0;
+            if (bullet.body.blocked.left) nx = 1;
+            else if (bullet.body.blocked.right) nx = -1;
+            if (bullet.body.blocked.up) ny = 1;
+            else if (bullet.body.blocked.down) ny = -1;
+
+            const dot = vx * nx + vy * ny;
+            const rvx = vx - 2 * dot * nx;
+            const rvy = vy - 2 * dot * ny;
+
+            bullet.body.setVelocity(rvx, rvy);
         } else {
             destroyBullet(bullet);
         }
@@ -576,10 +581,12 @@ function destroyBullet(bullet) {
     }
     bullet.destroy();
     playerBullets = playerBullets.filter(b => b !== bullet);
+    console.log('quebrou, mas é o destino da bala~');
 }
 
 function updateBullets(scene) {
     for (const bullet of playerBullets) {
+        bullet.prev = { x: bullet.x, y: bullet.y };
         bullet.trail.push({x: bullet.x, y: bullet.y});
         if (bullet.trail.length > bullet.trailLength) bullet.trail.shift();
 
@@ -593,21 +600,25 @@ function updateBullets(scene) {
 }
 
 function renderBulletTrails(scene) {
+    if (!scene.bulletTrailGraphics) {
+        scene.bulletTrailGraphics = scene.add.graphics().setDepth(1);
+    }
+    const graphics = scene.bulletTrailGraphics;
+    graphics.clear();
     for (const bullet of playerBullets) {
         for (let i = 1; i < bullet.trail.length; i++) {
             const a = bullet.trail[i-1];
             const b = bullet.trail[i];
             const alpha = i / bullet.trail.length;
-            const graphics = scene.add.graphics();
             graphics.lineStyle(2, 0xffffff, 0.2 * alpha);
             graphics.beginPath();
             graphics.moveTo(a.x, a.y);
             graphics.lineTo(b.x, b.y);
             graphics.strokePath();
-            graphics.destroy();
         }
     }
 }
+
 //#endregion
 
 const ROTATE_SPEED = 3;
@@ -617,13 +628,20 @@ const config = {
     width: (map.width || defaultWidth) * spriteSize,
     height: ((map.height || defaultHeight) * spriteSize) + spriteSize,
     parent: window.PHASER_PARENT || null,
-    physics: { default: 'arcade' },
+    physics: {
+        default: 'arcade',
+        arcade: {
+            debug: false
+        }
+    },
     scene: {
         preload: function () {
             preloadMapSprites(this);
         },
         create: function () {
             currentScene = this;
+            this.physics.world.setBoundsCollision(true, true, true, true);
+
             tankSpawnIndex = findTankSpawn(map);
             drawMap(this, map, tankSpawnIndex);
             setupTankCollisions(this, map);
@@ -634,8 +652,53 @@ const config = {
                     fireBullet(this);
                 }
             });
-            this.input.on('pointerup', () => {
-                
+
+            this.physics.world.on('worldbounds', function(body) {
+                const bullet = body.gameObject;
+                if (!bullet || bullet.ricochetsLeft === undefined) return;
+
+                if (bullet.ricochetsLeft > 0) {
+                    bullet.ricochetsLeft--;
+
+                    const v = { x: bullet.body.velocity.x, y: bullet.body.velocity.y };
+                    const n = { x: 0, y: 0 };
+
+                    if (bullet.body.blocked.left) n.x = 1;
+                    if (bullet.body.blocked.right) n.x = -1;
+                    if (bullet.body.blocked.up) n.y = 1;
+                    if (bullet.body.blocked.down) n.y = -1;
+
+                    const dot = v.x * n.x + v.y * n.y;
+                    bullet.body.setVelocity(
+                        v.x - 2 * dot * n.x,
+                        v.y - 2 * dot * n.y
+                    );
+                } else {
+                    destroyBullet(bullet);
+                }
+            });
+
+            this.physics.add.collider(this.bulletCollisionGroup, this.bulletCollisionGroup, (bullet, block) => {
+                if (!bullet.ricochetsLeft || bullet.ricochetsLeft <= 0) {
+                    destroyBullet(bullet);
+                    return;
+                }
+
+                bullet.ricochetsLeft--;
+
+                const v = { x: bullet.body.velocity.x, y: bullet.body.velocity.y };
+                const n = { x: 0, y: 0 };
+
+                if (bullet.body.blocked.left) n.x = 1;
+                if (bullet.body.blocked.right) n.x = -1;
+                if (bullet.body.blocked.up) n.y = 1;
+                if (bullet.body.blocked.down) n.y = -1;
+
+                const dot = v.x * n.x + v.y * n.y;
+                bullet.body.setVelocity(
+                    v.x - 2 * dot * n.x,
+                    v.y - 2 * dot * n.y
+                );
             });
         },
         update: function () {
@@ -672,8 +735,6 @@ const config = {
             }
 
             updateBullets(this);
-        },
-        render: function () {
             renderBulletTrails(this);
         }
     }
